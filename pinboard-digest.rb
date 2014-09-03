@@ -3,6 +3,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'time'
+require 'terminal-table'
 
 module PinboardHelper
    API_ENDPOINT = "https://api.pinboard.in"
@@ -40,19 +41,38 @@ module PinboardHelper
       puts res.inspect
       res
    end
+
+   def self.truncate(string, max)
+      string.length > max ? "#{string[0...max]}..." : string
+   end
 end
+
+# get n last links, or last 7/14days, run it daily, if no links
+# linkstats + random link
 
 api_token = PinboardHelper.load_api_token
 if api_token != nil
    res = PinboardHelper.request("posts/recent/",api_token)
-   recent_bookmarks = JSON.parse(res.body)
-   recent_bookmarks.each do |bm|
-      puts bm.inspect
-   end
+   response_data = JSON.parse(res.body)
 
+   bookmarks = response_data["posts"]
+   #puts bookmarks.inspect
+   rows = bookmarks.map {|bm| 
+      [ PinboardHelper.truncate(bm["href"],40), 
+        PinboardHelper.truncate(bm["description"],40), 
+        bm["time"] ]
+   }
+   title = sprintf("user %s\ndate %s", response_data["user"],response_data["date"])
+   table = Terminal::Table.new :title => title, :rows => rows, :width => 25
+
+   puts table
+
+=begin
    res = PinboardHelper.request("posts/dates/",api_token)
    date_stats = JSON.parse(res.body)
    date_stats.each do |date|
       puts date.inspect
    end
+=end
+
 end
