@@ -50,29 +50,34 @@ end
 # get n last links, or last 7/14days, run it daily, if no links
 # linkstats + random link
 
-api_token = PinboardHelper.load_api_token
-if api_token != nil
-   res = PinboardHelper.request("posts/recent/",api_token)
-   response_data = JSON.parse(res.body)
-
-   bookmarks = response_data["posts"]
-   #puts bookmarks.inspect
-   rows = bookmarks.map {|bm| 
-      [ PinboardHelper.truncate(bm["href"],40), 
-        PinboardHelper.truncate(bm["description"],40), 
-        bm["time"] ]
-   }
-   title = sprintf("user %s\ndate %s", response_data["user"],response_data["date"])
-   table = Terminal::Table.new :title => title, :rows => rows, :width => 25
-
-   puts table
-
-=begin
-   res = PinboardHelper.request("posts/dates/",api_token)
-   date_stats = JSON.parse(res.body)
-   date_stats.each do |date|
-      puts date.inspect
+module PinboardDigest
+   def self.html(bookmarks)
    end
-=end
 
+   def self.text(data)
+      bookmarks = data["posts"]
+      user = data["user"]
+      date = data["date"]
+
+      rows = bookmarks.map {|bm| 
+         [ PinboardHelper.truncate(bm["href"],40), 
+         PinboardHelper.truncate(bm["description"],40), 
+         bm["time"] ]
+      }
+      title = sprintf("user %s\ndate %s", user, date)
+      table = Terminal::Table.new :title => title, :rows => rows, :width => 25
+   end
+
+   def self.run(args)
+      api_token = PinboardHelper.load_api_token
+      if api_token != nil
+         res = PinboardHelper.request("posts/recent/",api_token)
+         response_data = JSON.parse(res.body)
+
+         table = PinboardDigest.text(response_data)
+         puts table
+      end
+   end
 end
+
+PinboardDigest.run(ARGV)
