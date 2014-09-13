@@ -4,6 +4,7 @@ require 'uri'
 require 'json'
 require 'time'
 require 'terminal-table'
+require 'haml'
 
 module PinboardHelper
    API_ENDPOINT = "https://api.pinboard.in"
@@ -51,7 +52,27 @@ end
 # linkstats + random link
 
 module PinboardDigest
-   def self.html(bookmarks)
+   def self.html(data)
+      bookmarks = data["posts"]
+      user = data["user"]
+      date = data["date"]
+   
+      template = haml_template
+      puts template
+      engine = Haml::Engine.new template
+      engine.render(Object.new, :bookmarks => bookmarks)
+   end
+
+   def self.haml_template
+      template = <<-END.gsub(/^ {9}/,'')
+         %html
+            %body 
+               %ul  
+                  - bookmarks.each do |bm|
+                     %li 
+                        %a{:href=> bm['href']} 
+                           =bm['description']
+      END
    end
 
    def self.text(data)
@@ -73,8 +94,10 @@ module PinboardDigest
       if api_token != nil
          res = PinboardHelper.request("posts/recent/",api_token)
          response_data = JSON.parse(res.body)
-
+         
          table = PinboardDigest.text(response_data)
+         puts table
+         table = PinboardDigest.html(response_data)
          puts table
       end
    end
