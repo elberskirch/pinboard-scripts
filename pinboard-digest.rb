@@ -5,6 +5,7 @@ require 'json'
 require 'time'
 require 'terminal-table'
 require 'haml'
+require 'pony'
 
 module PinboardHelper
    API_ENDPOINT = "https://api.pinboard.in"
@@ -89,6 +90,22 @@ module PinboardDigest
       table = Terminal::Table.new :title => title, :rows => rows, :width => 25
    end
 
+   def self.setup() 
+      mailerconfig = JSON.parse(File.read("mailer.json"), :symbolize_names => true)
+      @@mailer_options = mailerconfig[:smtp]
+      puts @@mailer_options.inspect
+   end
+      
+   def self.sendmail(subject, body)
+      Pony.mail({
+               :to => "dominik.elberskirch@gmail.com",
+               :subject => subject,
+               :html_body => body,
+               :via => :smtp,
+               :via_options => @@mailer_options
+      })
+   end
+
    def self.run(args)
       api_token = PinboardHelper.load_api_token
       if api_token != nil
@@ -99,6 +116,8 @@ module PinboardDigest
          puts table
          table = PinboardDigest.html(response_data)
          puts table
+         setup # prepare mailer setup
+         sendmail("PinboardDigest #{Time.now}",table)
       end
    end
 end
