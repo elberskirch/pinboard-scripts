@@ -6,6 +6,8 @@ require 'time'
 require 'terminal-table'
 require 'haml'
 require 'pony'
+require 'ostruct'
+require 'optparse'
 
 module PinboardHelper
    API_ENDPOINT = "https://api.pinboard.in"
@@ -90,13 +92,13 @@ module PinboardDigest
       table = Terminal::Table.new :title => title, :rows => rows, :width => 25
    end
 
-   def self.setup() 
+   def self.mailerconfig() 
       mailerconfig = JSON.parse(File.read("mailer.json"), :symbolize_names => true)
       @@mailer_options = mailerconfig[:smtp]
       puts @@mailer_options.inspect
    end
       
-   def self.sendmail(subject, body)
+   def self.sendmail(to, subject, body)
       Pony.mail({
                :to => "dominik.elberskirch@gmail.com",
                :subject => subject,
@@ -106,18 +108,51 @@ module PinboardDigest
       })
    end
 
+   def self.parse(args)
+      puts args.inspect
+      options = OpenStruct.new
+      options.receiver = ""
+      options.max = 15
+      options.html = false
+
+      opt_parser = OptionParser.new do |opts|
+         opts.on("-r", "--receiver EMAIL", "EMAIL receiver of the PinboardDigest") do |r|
+            options.receiver = r 
+         end
+
+         opts.on("--max COUNT", Integer, "maximum COUNT of links per mail (1-100, default 15)") do |c|
+            if( c < 101 && c > 0 )
+               options.max = c
+            end
+         end
+
+         opts.on("-x", "--html", "use html format") do
+
+            options.html = true
+         end
+      end
+      opt_parser.parse!(args)
+      puts options.inspect
+      options
+   end
+
    def self.run(args)
       api_token = PinboardHelper.load_api_token
+      options = parse(ARGV)
+
       if api_token != nil
-         res = PinboardHelper.request("posts/recent/",api_token)
+         res = PinboardHelper.request("posts/recent/",api_token, "count" => options.max)
          response_data = JSON.parse(res.body)
          
-         table = PinboardDigest.text(response_data)
+         if options.html 
+            table = PinboardDigest.html(response_data)
+         else 
+            table = PinboardDigest.text(response_data)
+            table = table.to_s
+         end
          puts table
-         table = PinboardDigest.html(response_data)
-         puts table
-         setup # prepare mailer setup
-         sendmail("PinboardDigest #{Time.now}",table)
+         mailerconfig # prepare mailer setup
+         sendmail(options.receiver, "PinboardDigest #{Time.now}",table)
       end
    end
 end
