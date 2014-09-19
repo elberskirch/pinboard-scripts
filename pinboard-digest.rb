@@ -62,18 +62,25 @@ module PinboardDigest
       template = haml_template
       #puts template
       engine = Haml::Engine.new template
-      engine.render(Object.new, :bookmarks => data.bookmarks)
+      engine.render(Object.new, :data => data)
    end
 
    def self.haml_template
       template = <<-END.gsub(/^ {9}/,'')
          %html
             %body 
+               %h2= data.title
                %ul  
-                  - bookmarks.each do |bm|
+                  - data.bookmarks.each do |bm|
                      %li 
                         %a{:href=> bm['href']} 
                            =bm['description']
+            - if data.random != nil
+               %h2= "random link"
+               %ul
+                  %li
+                     %a{:href => data.random[:href]}
+                        =data.random[:description]
       END
    end
 
@@ -95,7 +102,7 @@ module PinboardDigest
       
    def self.sendmail(to, subject, body)
       Pony.mail({
-               :to => "dominik.elberskirch@gmail.com",
+               :to => to,
                :subject => subject,
                :html_body => body,
                :via => :smtp,
@@ -155,6 +162,8 @@ module PinboardDigest
          posts = recent_posts(api_token, options.max)
          
          if options.html 
+            posts.title = "Bookmarks for #{posts.date}"
+            posts.random = { :href => "http://www.google.de", :description => "search engine"}
             table = PinboardDigest.html(posts)
          else 
             table = PinboardDigest.text(posts)
@@ -162,7 +171,7 @@ module PinboardDigest
          end
          puts table
 
-         if options.receiver != ""
+         if options.receiver != nil
             mailerconfig # prepare mailer setup
             sendmail(options.receiver, "PinboardDigest #{Time.now}",table)
          end
