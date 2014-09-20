@@ -101,19 +101,28 @@ module PinboardDigest
       table = Terminal::Table.new :title => title, :rows => rows, :width => 25
    end
 
-   def self.mailerconfig() 
-      mailerconfig = JSON.parse(File.read("mailer.json"), :symbolize_names => true)
-      @@mailer_options = mailerconfig[:smtp]
-      #puts @@mailer_options.inspect
+   def self.load_mailer_config() 
+      mailer_file = File.join(ENV["HOME"],".mailer.json")
+      mailer_config = nil
+      if File.exists?(mailer_file)
+         File.open(mailer_file) do |file|
+            raw_config = file.read
+            mailer_config = JSON.parse(raw_config, :symbolize_names => true)
+         end
+      else
+         puts "PLEASE create a .mailer.json file in your HOME directory"
+         exit
+      end 
+      mailer_config[:smtp]
    end
       
-   def self.sendmail(to, subject, body)
+   def self.sendmail(to, subject, body, config)
       Pony.mail({
                :to => to,
                :subject => subject,
                :html_body => body,
                :via => :smtp,
-               :via_options => @@mailer_options
+               :via_options => config
       })
    end
 
@@ -148,6 +157,7 @@ module PinboardDigest
    end
 
    def self.recent_posts(api_token, count)
+      puts "fetch recent posts"
       posts = OpenStruct.new
       res = PinboardHelper.request("posts/recent/",api_token, "count" => count)
 
@@ -160,16 +170,17 @@ module PinboardDigest
    end
 
    def self.random_post(api_token)
+      puts "fetch random post"
       res = PinboardHelper.request("posts/dates/",api_token)
       response_data = JSON.parse(res.body)
-      puts response_data.inspect
+      #puts response_data.inspect
       dates = response_data["dates"]
       date = dates.keys.sample # get a random date where at least one post was made
-      puts date
+      #puts date
       res = PinboardHelper.request("posts/get/",api_token, :dt => date)
       response_data = JSON.parse(res.body)
       post = response_data["posts"].sample
-      puts post.inspect
+      #puts post.inspect
       post
    end
 
@@ -189,8 +200,8 @@ module PinboardDigest
          puts table
 
          if options.receiver != nil
-            mailerconfig # prepare mailer setup
-            sendmail(options.receiver, "PinboardDigest #{Time.now}",table)
+            config = load_mailer_config # prepare mailer setup
+            sendmail(options.receiver, "PinboardDigest #{Time.now}",table, config)
          end
       end
    end
