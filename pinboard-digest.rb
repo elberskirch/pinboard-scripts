@@ -26,18 +26,23 @@ module PinboardHelper
       token
    end
 
-   def self.request(cmd, api_token, user_params = nil)
+   def self.request(cmd, api_token, user_params = nil, no_json = false)
 
-      params = { 'auth_token' => api_token, 'format' => 'json'}
+      if no_json
+         params = { 'auth_token' => api_token }
+      else 
+         params = { 'auth_token' => api_token, 'format' => 'json'}
+      end
+
       if user_params != nil
-         params = user_params.merge(params)
+         params = params.merge(user_params)
       end
       #puts cmd
       path = [API_ENDPOINT, API_VERSION, cmd].join("/")
       puts "Performing REST call: #{path}"
       req_url = [path,URI.encode_www_form(params)].join("?")
       uri = URI.parse(req_url)
-      #puts uri.inspect
+      puts uri.inspect
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
       req = Net::HTTP::Get.new(req_url)
@@ -73,14 +78,16 @@ module PinboardDigest
                %ul  
                   - data.bookmarks.each do |bm|
                      %li 
+                        =bm['time']
                         %a{:href=> bm['href']} 
                            =bm['description']
             - if data.random != nil
                %h2= "random link"
                %ul
                   %li
-                     %a{:href => data.random[:href]}
-                        =data.random[:description]
+                     =data.random['time']
+                     %a{:href => data.random['href']}
+                        =data.random['description']
       END
    end
 
@@ -152,7 +159,18 @@ module PinboardDigest
       posts 
    end
 
-   def self.random_post()
+   def self.random_post(api_token)
+      res = PinboardHelper.request("posts/dates/",api_token)
+      response_data = JSON.parse(res.body)
+      puts response_data.inspect
+      dates = response_data["dates"]
+      date = dates.keys.sample # get a random date where at least one post was made
+      puts date
+      res = PinboardHelper.request("posts/get/",api_token, :dt => date)
+      response_data = JSON.parse(res.body)
+      post = response_data["posts"].sample
+      puts post.inspect
+      post
    end
 
    def self.run(args)
@@ -160,10 +178,9 @@ module PinboardDigest
       options = parse(ARGV)
       if api_token != nil
          posts = recent_posts(api_token, options.max)
-         
          if options.html 
             posts.title = "Bookmarks for #{posts.date}"
-            posts.random = { :href => "http://www.google.de", :description => "search engine"}
+            posts.random = random_post(api_token)
             table = PinboardDigest.html(posts)
          else 
             table = PinboardDigest.text(posts)
