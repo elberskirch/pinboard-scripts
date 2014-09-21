@@ -1,4 +1,24 @@
 #!/usr/bin/env ruby
+# Copyright (c) 2014 Dominik Elberskirch <dominik.elberskirch@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 require 'net/http'
 require 'uri'
 require 'json'
@@ -63,11 +83,13 @@ module PinboardHelper
 end
 
 module PinboardDigest
+   PINBOARD_DIGEST_VERSION = '0.8.0'
+
    def self.html(data)
       template = haml_template
       #puts template
       engine = Haml::Engine.new template
-      engine.render(Object.new, :data => data)
+      engine.render(Object.new,  :data => data)
    end
 
    def self.haml_template
@@ -88,6 +110,12 @@ module PinboardDigest
                      =data.random['time']
                      %a{:href => data.random['href']}
                         =data.random['description']
+               %br 
+               %br 
+               created by
+               %b
+                  PinboardDigest 
+                  =data.digest_version
       END
    end
 
@@ -159,6 +187,7 @@ module PinboardDigest
    def self.recent_posts(api_token, count)
       puts "fetch recent posts"
       posts = OpenStruct.new
+      posts.digest_version = PINBOARD_DIGEST_VERSION
       res = PinboardHelper.request("posts/recent/",api_token, "count" => count)
 
       #puts res.inspect
@@ -189,8 +218,9 @@ module PinboardDigest
       options = parse(ARGV)
       if api_token != nil
          posts = recent_posts(api_token, options.max)
+
          if options.html 
-            posts.title = "Bookmarks for #{posts.date}"
+            posts.title = "bookmarks for #{posts.date}"
             posts.random = random_post(api_token)
             table = PinboardDigest.html(posts)
          else 
