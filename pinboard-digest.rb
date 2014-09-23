@@ -100,14 +100,14 @@ module PinboardDigest
                %ul  
                   - data.bookmarks.each do |bm|
                      %li 
-                        =bm['time']
+                        =Time.parse(bm['time'])
                         %a{:href=> bm['href']} 
                            =bm['description']
             - if data.random != nil
                %h2= "random link"
                %ul
                   %li
-                     =data.random['time']
+                     =Time.parse(data.random['time'])
                      %a{:href => data.random['href']}
                         =data.random['description']
                %br 
@@ -123,9 +123,9 @@ module PinboardDigest
       rows = data.bookmarks.map {|bm| 
          [ PinboardHelper.truncate(bm["href"],40), 
          PinboardHelper.truncate(bm["description"],40), 
-         bm["time"] ]
+         Time.parse(bm["time"]) ]
       }
-      title = sprintf("user %s\ndate %s", data.user, data.date)
+      title = sprintf("user %s\ndate %s", data.user, Time.parse(data.date))
       table = Terminal::Table.new :title => title, :rows => rows, :width => 25
    end
 
@@ -220,7 +220,7 @@ module PinboardDigest
          posts = recent_posts(api_token, options.max)
 
          if options.html 
-            posts.title = "bookmarks for #{posts.date}"
+            posts.title = "bookmarks for #{Time.parse(posts.date)}"
             posts.random = random_post(api_token)
             table = PinboardDigest.html(posts)
          else 
