@@ -80,16 +80,18 @@ module PinboardHelper
 end
 ##########################################
 
-api_token = load_api_token
+api_token = PinboardHelper.load_api_token
 if api_token != nil 
    res = PinboardHelper.request("notes/list/", api_token)
    puts res.inspect
    json = JSON.parse(res.body)
+   puts json.inspect
    notes = json["notes"]
    notes.each do |note|
       id = note["id"]
-      res = pinboard_cmd("notes/#{id}",api_token)
-      puts res.body.inspect
+      res = PinboardHelper.request("notes/#{id}",api_token)
+      json = JSON.parse(res.body)
+      puts json.inspect
       sleep 1
    end
 end
